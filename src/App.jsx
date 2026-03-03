@@ -1245,7 +1245,6 @@ function StandaloneTab({mk,state,setState,creds,timers,setTimers}) {
         <MachineTimer elapsed={timer.elapsed} running={timer.running} onToggle={toggleTimer}/>
       </div>
       <HostHeader ip={ip} setIp={v=>s("ip",v)} hostname={hostname} setHostname={v=>s("hostname",v)} osVersion={osVersion} setOsVersion={v=>s("osVersion",v)} scanCmd="sudo nmap -Pn -n $IP -sC -sV -p- --open -oN tcp.nmap"/>
-      <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",background:"rgba(255,170,0,0.04)",borderBottom:"1px solid rgba(100,130,160,0.06)"}}><input type="checkbox" style={{accentColor:"#ffaa00"}}/><span style={{fontSize:10.5,fontFamily:"monospace",color:"#ffaa00",fontWeight:700}}>Run autorecon in background:</span><span style={{fontSize:10,fontFamily:"monospace",color:"#6b7f94",marginLeft:4}}>autorecon $IP --single-target --heartbeat 30</span></div>
       <UdpReminder ip={ip} udpDone={udpDone} onDone={()=>s("udpDone",true)}/>
       <PortSelector ports={ports} dismissed={dismissed} onAdd={addPort} onDismiss={dismiss} onRestore={restore} portServiceMap={portServiceMap} onSetService={setService}/>
       <NmapPaste onAddPorts={addPorts}/>
@@ -1447,7 +1446,6 @@ function ADTab({state,setState,creds,timers,setTimers}) {
 
       {/* Host header + ports */}
       <HostHeader ip={ip} setIp={v=>setMState({...mState,ip:v})} hostname={hostname} setHostname={v=>setMState({...mState,hostname:v})} osVersion={mState.osVersion||""} setOsVersion={v=>setMState({...mState,osVersion:v})} scanCmd="sudo nmap -Pn -n $IP -sC -sV -p- --open"/>
-      <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",background:"rgba(255,170,0,0.04)",borderBottom:"1px solid rgba(100,130,160,0.06)"}}><input type="checkbox" style={{accentColor:"#ffaa00"}}/><span style={{fontSize:10.5,fontFamily:"monospace",color:"#ffaa00",fontWeight:700}}>Autorecon all AD hosts:</span><span style={{fontSize:10,fontFamily:"monospace",color:"#6b7f94",marginLeft:4}}>autorecon $MS01 $MS02 $DC --heartbeat 30</span></div>
       <PortSelector ports={ports} dismissed={dismissed||[]} onAdd={addPort} onDismiss={dismiss} onRestore={restore} portServiceMap={mPortServiceMap} onSetService={setMService}/>
       <NmapPaste onAddPorts={addPorts}/>
       <AttackChain chain={chain||[]} setChain={v=>setMState({...mState,chain:v})}/>
