@@ -1,0 +1,26 @@
+{
+  "name": "oscp-command-center",
+  "private": false,
+  "version": "2.0.0",
+  "description": "Interactive OSCP exam companion with 700+ checklist items, attack chain tracking, credential matrix, phishing workflows, hash cracking reference, and exam countdown timer.",
+  "author": "whisk3y3",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/whisk3y3/oscp-command-center"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "vite": "^5.0.0"
+  }
+}
